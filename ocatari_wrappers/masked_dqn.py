@@ -1,8 +1,7 @@
-from collections import deque
-
 import cv2
 import numpy as np
 import gymnasium as gym
+from collections import deque
 
 from ocatari.ram.extract_ram_info import get_class_dict
 
