@@ -11,7 +11,7 @@ class MaskedBaseWrapper(gym.ObservationWrapper):
     Base class for all our wrappers.
     """
 
-    def __init__(self, env, buffer_window_size=4, *, include_pixels=False, num_planes=1):
+    def __init__(self, env, buffer_window_size=4, *, include_pixels=False, num_planes=1, exclude_categories= ()):
         """
         Args:
             env (gym.Env, OCAtari): The environment to wrap (Should contain an OCAtari in the stack).
@@ -32,9 +32,9 @@ class MaskedBaseWrapper(gym.ObservationWrapper):
         self._buffer = deque([], maxlen=length)
 
         if include_pixels:
-            self.init_obs = self.add_pixel_screen
+            self.finalize_obs = self.add_pixel_screen
         else:
-            self.init_obs = lambda observation: observation
+            self.finalize_obs = lambda observation: None
 
     def add_pixel_screen(self, observation):
         """
@@ -58,15 +58,14 @@ class MaskedBaseWrapper(gym.ObservationWrapper):
         Returns:
             np.ndarray: The final observations of shape Yx84x84.
         """
-        
         # add grayscale screen if necessary
-        self.init_obs(obs_plane_list)
+        self.finalize_obs(obs_plane_list)
         
         # resize all observation planes
         for frame in obs_plane_list:
             self._buffer.append(cv2.resize(frame, (84, 84), interpolation=cv2.INTER_AREA))
 
-        return np.array(self._buffer)
+        return np.asarray(self._buffer)
 
     def reset(self, *args, **kwargs):
         ret = super().reset(*args, **kwargs)
@@ -90,7 +89,6 @@ class BinaryMaskWrapper(MaskedBaseWrapper):
         for o in self.env.objects:  # noqa: OCAtari in the stack
             if o is not None:
                 x, y, w, h = o.xywh
-
                 if x + w > 0 and y + h > 0:
                     for i in range(max(0, y), min(y + h, 209)):
                         for j in range(max(0, x), min(x + w, 159)):
@@ -110,7 +108,6 @@ class PixelMaskWrapper(MaskedBaseWrapper):
         for o in self.env.objects:  # noqa: type(env) == OCAtari
             if o is not None:
                 x,y,w,h = o.xywh
-
                 if x+w > 0 and y+h > 0:
                     for i in range(max(0, y), min(y+h, 209)):
                         for j in range(max(0, x), min(x+w, 159)):
@@ -127,18 +124,43 @@ class ObjectTypeMaskWrapper(MaskedBaseWrapper):
 
     def __init__(self, env: gym.Env, *args, **kwargs):
         super().__init__(env, *args, **kwargs)
-        self.object_types =  list(dict.fromkeys(get_class_dict(self.game_name)))
-
+        keys = get_class_dict(self.game_name).keys()
+        shades = 255 // len(keys)
+        self._shades =  {k: (i + 1) * shades for i, k in enumerate(keys)}
 
     def observation(self, observation):
         state = np.zeros((210, 160))
         for o in self.env.objects:  # noqa: type(env) == OCAtari
             if not (o is None or o.category == "NoObject"):
                 x, y, w, h = o.xywh
-                value = 255 * (1 + self.object_types.index(o.category)) // len(self.object_types)
-
                 if x + w > 0 and y + h > 0:
+                    value = self._shades[o.category]
                     for i in range(max(0, y), min(y + h, 209)):
                         for j in range(max(0, x), min(x + w, 159)):
                             state[i, j] = value
         return self.create_obs([state])
+
+
+class ObjectTypeMaskPlanesWrapper(MaskedBaseWrapper):
+    """
+    A Wrapper that outputs a binary mask including
+    only white bounding boxes of all objects on a black background, where
+    every object type is on its own plane.
+    """
+
+    def __init__(self, env: gym.Env, *args, **kwargs):
+        self.object_types = {k: i for i, k in enumerate(get_class_dict(env.game_name).keys())}
+        super().__init__(env, num_planes=len(self.object_types), *args, **kwargs)
+
+    def observation(self, observation):
+        state = [np.zeros((210, 160)) for _ in range(len(self.object_types))]
+        for o in self.env.objects:  # noqa: type(env) == OCAtari
+            if not (o is None or o.category == "NoObject"):
+                x, y, w, h = o.xywh
+                if x + w > 0 and y + h > 0:
+                    idx = self.object_types[o.category]
+                    for i in range(max(0, y), min(y + h, 209)):
+                        for j in range(max(0, x), min(x + w, 159)):
+                            # state[idx][i, j] = 255
+                            state[idx][i, j] = 255
+        return self.create_obs(state)
