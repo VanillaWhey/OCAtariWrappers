@@ -164,3 +164,28 @@ class ObjectTypeMaskPlanesWrapper(MaskedBaseWrapper):
                             # state[idx][i, j] = 255
                             state[idx][i, j] = 255
         return self.create_obs(state)
+
+
+class PixelMaskPlanesWrapper(MaskedBaseWrapper):
+    """
+    A Wrapper that outputs a binary mask including
+    only white bounding boxes of all objects on a black background, where
+    every object type is on its own plane.
+    """
+
+    def __init__(self, env: gym.Env, *args, **kwargs):
+        self.object_types = {k: i for i, k in enumerate(get_class_dict(env.game_name).keys())}
+        super().__init__(env, num_planes=len(self.object_types), *args, **kwargs)
+
+    def observation(self, observation):
+        state = [np.zeros((210, 160)) for _ in range(len(self.object_types))]
+        gray_scale_img = self.unwrapped.ale.getScreenGrayscale()  # noqa: OCAtari in the stack
+        for o in self.env.objects:  # noqa: type(env) == OCAtari
+            if not (o is None or o.category == "NoObject"):
+                x, y, w, h = o.xywh
+                if x + w > 0 and y + h > 0:
+                    idx = self.object_types[o.category]
+                    for i in range(max(0, y), min(y + h, 209)):
+                        for j in range(max(0, x), min(x + w, 159)):
+                            state[idx][i, j] = gray_scale_img[i, j]
+        return self.create_obs(state)
