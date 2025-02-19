@@ -3,7 +3,7 @@ import numpy as np
 import gymnasium as gym
 from collections import deque
 
-from ocatari.ram.extract_ram_info import get_class_dict
+from ocatari.ram.extract_ram_info import get_class_dict, get_max_objects
 
 
 class MaskedBaseWrapper(gym.ObservationWrapper):
@@ -174,7 +174,7 @@ class PixelMaskPlanesWrapper(MaskedBaseWrapper):
     """
 
     def __init__(self, env: gym.Env, *args, **kwargs):
-        self.object_types = {k: i for i, k in enumerate(get_class_dict(env.game_name).keys())}
+        self.object_types = {k: i for i, k in enumerate(get_max_objects(env.game_name, env.hud).keys())}
         super().__init__(env, num_planes=len(self.object_types), *args, **kwargs)
 
     def observation(self, observation):
