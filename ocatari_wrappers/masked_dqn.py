@@ -77,7 +77,6 @@ class MaskedBaseWrapper(gym.ObservationWrapper):
         return obs, *ret[1:]  # noqa: cannot be undefined
 
 
-
 class BinaryMaskWrapper(MaskedBaseWrapper):
     """
     A Wrapper that outputs a binary mask including
@@ -126,7 +125,7 @@ class ObjectTypeMaskWrapper(MaskedBaseWrapper):
         super().__init__(env, *args, **kwargs)
         keys = get_class_dict(self.game_name).keys()
         shades = 255 // len(keys)
-        self._shades =  {k: (i + 1) * shades for i, k in enumerate(keys)}
+        self.object_types =  {k: (i + 1) * shades for i, k in enumerate(keys)}
 
     def observation(self, observation):
         state = np.zeros((210, 160))
@@ -134,10 +133,9 @@ class ObjectTypeMaskWrapper(MaskedBaseWrapper):
             if not (o is None or o.category == "NoObject"):
                 x, y, w, h = o.xywh
                 if x + w > 0 and y + h > 0:
-                    value = self._shades[o.category]
                     for i in range(max(0, y), min(y + h, 209)):
                         for j in range(max(0, x), min(x + w, 159)):
-                            state[i, j] = value
+                            state[i, j] = self.object_types[o.category]
         return self.create_obs([state])
 
 
