@@ -6,7 +6,7 @@ import sys
 import argparse
 import torch
 import gymnasium as gym
-from ocatari.utils import load_agent
+from load_agent import load_agent
 import os
 import argparse
 import json
@@ -104,7 +104,6 @@ def main():
         "pixels": PixelMaskWrapper,
         "classes": ObjectTypeMaskWrapper,
         "planes": ObjectTypeMaskPlanesWrapper,
-        "pixelplanes": PixelMaskPlanesWrapper,
     }
 
     if args.wrapper in wrapper_mapping:
