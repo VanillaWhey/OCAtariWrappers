@@ -38,7 +38,7 @@ class MaskedBaseWrapper(gym.ObservationWrapper):
         self.state = None
 
         if work_in_output_shape:  # directly create the 84x84 frames
-            self.working_shape = (num_planes, 84, 84)
+            self.working_shape = (num_planes + include_pixels, 84, 84)
             self.calc_limits = lambda x, y, x_w, y_h: (
                 max(0, y * 84 // 210),
                 min(y_h * 84 // 210 + 1, 84),
@@ -52,7 +52,7 @@ class MaskedBaseWrapper(gym.ObservationWrapper):
             else:
                 self.maybe_add_pixel_screen = lambda: None
         else:  # create 210x160 frames and then downscale them
-            self.working_shape = (num_planes, 210, 160)
+            self.working_shape = (num_planes + include_pixels, 210, 160)
             self.calc_limits = lambda x, y, x_w, y_h: (
                 max(0, y),
                 min(y_h, 210),
