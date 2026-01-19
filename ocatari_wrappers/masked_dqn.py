@@ -180,7 +180,7 @@ class ObjectTypeMaskPlanesWrapper(MaskedBaseWrapper):
     only white bounding boxes of all objects on a black background, where
     every object type is on its own plane.
     """
-    def __init__(self, env, *args, v2=False, **kwargs):
+    def __init__(self, env, *args, v2=False, extra_planes=0, **kwargs):
         """
         :param v2: Only use HUD objects if HUD is specified.
         """
@@ -188,7 +188,7 @@ class ObjectTypeMaskPlanesWrapper(MaskedBaseWrapper):
             self.object_types = {k: i for i, k in enumerate(get_max_objects(env.game_name, env.hud).keys())}  # noqa: OCAtari in the env stack
         else:
             self.object_types = {k: i for i, k in enumerate(get_class_dict(env.game_name).keys())}  # noqa: OCAtari in the env stack
-        super().__init__(env, num_planes=len(self.object_types), *args, **kwargs)
+        super().__init__(env, num_planes=len(self.object_types) + extra_planes, *args, **kwargs)
 
     def set_value(self, y_min, y_max, x_min, x_max, o):
         self.state[self.object_types[o.category], y_min:y_max, x_min:x_max].fill(255)
@@ -303,6 +303,13 @@ class MultiOCCAMWrapper(gym.ObservationWrapper):
                 return obs, *ret[1:]  # noqa: cannot be undefined
 
 
+        class OCAtariOBJWrapper(gym.Wrapper):
+            def __init__(self, env):
+                super().__init__(env)
+                assert env.create_ns_stack  # noqa: must be wrapper around OCAtari anyway
+                self._buffer = env._state_buffer_ns  # noqa: must be wrapper around OCAtari anyway
+
+
         mapping = {
             "plane_masks": ObjectTypeMaskPlanesWrapper,
             "class_masks": ObjectTypeMaskWrapper,
@@ -310,7 +317,8 @@ class MultiOCCAMWrapper(gym.ObservationWrapper):
             "object_masks": PixelMaskWrapper,
             "pixel_planes": PixelMaskPlanesWrapper,
             "big_planes": BigPlaneWrapper,
-            "dqn": DQNWrapper
+            "dqn": DQNWrapper,
+            "obj": OCAtariOBJWrapper,
         }
 
         self.wrappers = {}
