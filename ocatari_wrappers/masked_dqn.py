@@ -333,3 +333,13 @@ class MultiOCCAMWrapper(gym.ObservationWrapper):
 
     def observation(self, observation):
         return {key: np.asarray(self.wrappers[key]._buffer) for key in self.wrappers}  # noqa: private property of class in this file
+
+
+class MultiplyInputWrapper(gym.ObservationWrapper):
+    def __init__(self, env, num_channels):
+        super().__init__(env)
+        self.num_channels = num_channels
+        self._observation_space = gym.spaces.Box(0, 255, (num_channels, 84, 84))
+
+    def observation(self, observation: ObsType):
+        return np.concatenate([observation] * self.num_channels)
