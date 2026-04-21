@@ -339,7 +339,8 @@ class MultiplyInputWrapper(gym.ObservationWrapper):
     def __init__(self, env, num_channels):
         super().__init__(env)
         self.num_channels = num_channels
-        self._observation_space = gym.spaces.Box(0, 255, (num_channels, 84, 84))
+        c, w, h = self.env.observation_space.shape
+        self._observation_space = gym.spaces.Box(0, 255, (num_channels * c, w, h))
 
     def observation(self, observation: ObsType):
         return np.concatenate([observation] * self.num_channels)
